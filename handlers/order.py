@@ -103,6 +103,8 @@ async def step_cleaning_type(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> 
     info = CLEANING_TYPES.get(key, {})
     ctx.user_data["cleaning_type"] = key
     ctx.user_data["is_one_time"] = info.get("one_time", True)
+    ctx.user_data["extras"] = []
+    ctx.user_data["photos"] = []
     label = info.get("label", key)
 
     if not info.get("one_time", True):
@@ -251,10 +253,11 @@ async def step_photo_done(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int
     if q.data == "photo_skip":
         ctx.user_data["photos"] = []
 
-    return await _show_summary(q, ctx)
+    await q.message.reply_text("⏳ Формирую сводку заявки...")
+    return await _show_summary(q.message, ctx)
 
 
-async def _show_summary(query_or_update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
+async def _show_summary(message, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     d = ctx.user_data
     is_one_time = d.get("is_one_time", True)
     cleaning_type = d["cleaning_type"]
@@ -302,29 +305,26 @@ async def _show_summary(query_or_update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
         f"{price_text}"
     )
 
-    if hasattr(query_or_update, "edit_message_text"):
-        await query_or_update.edit_message_text(
-            text,
-            reply_markup=confirm_kb(),
-            parse_mode="HTML",
-        )
-    else:
-        await query_or_update.message.reply_text(
-            text,
-            reply_markup=confirm_kb(),
-            parse_mode="HTML",
-        )
+    await message.reply_text(
+        text,
+        reply_markup=confirm_kb(),
+        parse_mode="HTML",
+    )
 
     return S_CONFIRM
 
 
 async def step_confirm(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     q = update.callback_query
+
+    log.info("=== step_confirm ВЫЗВАН === q.data=%s", q.data)
+    log.info("user_data=%s", ctx.user_data)
+
     await q.answer()
 
     if q.data == "cancel_order":
         ctx.user_data.clear()
-        await q.edit_message_text(
+        await q.message.reply_text(
             "❌ Заявка отменена.\n\nВы всегда можете создать новую.",
             reply_markup=main_menu(),
         )
@@ -334,8 +334,7 @@ async def step_confirm(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
         ctx.user_data.clear()
         ctx.user_data["extras"] = []
         ctx.user_data["photos"] = []
-
-        await q.edit_message_text(
+        await q.message.reply_text(
             "🏠 <b>Шаг 1 из 9 — Тип помещения</b>\n\n"
             "Выберите тип вашего помещения:",
             reply_markup=room_type_kb(),
@@ -347,21 +346,31 @@ async def step_confirm(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     is_one_time = d.get("is_one_time", True)
     initial_status = "new" if is_one_time else "reviewing"
 
-    order_id = create_order({
-        "user_id": q.from_user.id,
-        "room_type": d["room_type"],
-        "area": d["area"],
-        "cleaning_type": d["cleaning_type"],
-        "is_one_time": is_one_time,
-        "extra_services": d.get("extras", []),
-        "contact_name": d["contact_name"],
-        "contact_phone": d["contact_phone"],
-        "address": d["address"],
-        "photos": d.get("photos", []),
-        "price": d.get("price"),
-        "priority": d.get("priority", "medium"),
-        "status": initial_status,
-    })
+    try:
+        order_id = create_order({
+            "user_id":        q.from_user.id,
+            "room_type":      d["room_type"],
+            "area":           d["area"],
+            "cleaning_type":  d["cleaning_type"],
+            "is_one_time":    is_one_time,
+            "extra_services": d.get("extras", []),
+            "contact_name":   d["contact_name"],
+            "contact_phone":  d["contact_phone"],
+            "address":        d["address"],
+            "photos":         d.get("photos", []),
+            "price":          d.get("price"),
+            "priority":       d.get("priority", "medium"),
+            "status":         initial_status,
+        })
+        log.info("=== Заявка создана: #%d ===", order_id)
+    except Exception as e:
+        log.error("=== ОШИБКА при создании заявки: %s ===", e)
+        await q.message.reply_text(
+            "❌ Произошла ошибка при создании заявки.\n"
+            "Попробуйте ещё раз.",
+            reply_markup=main_menu(),
+        )
+        return ConversationHandler.END
 
     if is_one_time:
         client_text = (
@@ -379,12 +388,12 @@ async def step_confirm(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
             f"📍 {d['address']}\n\n"
             "📅 Вы выбрали <b>уборку на постоянной основе</b>.\n"
             "Стоимость рассчитывается индивидуально.\n\n"
-            "Заявка передана на рассмотрение. Наш менеджер свяжется с вами "
+            "Наш менеджер свяжется с вами в ближайшее время "
             "для <b>назначения встречи</b> и обсуждения условий.\n\n"
             "📋 Статус заявки можно отслеживать в разделе <b>«Мои заявки»</b>."
         )
 
-    await q.edit_message_text(
+    await q.message.reply_text(
         client_text,
         reply_markup=main_menu(),
         parse_mode="HTML",
@@ -425,12 +434,10 @@ async def _notify_admins(ctx, order_id: int, d: dict, user) -> None:
                 reply_markup=order_actions_kb(order_id),
                 parse_mode="HTML",
             )
-
             if d.get("photos"):
                 await ctx.bot.send_message(admin_id, f"📸 Фото к заявке #{order_id}:")
                 for fid in d["photos"]:
                     await ctx.bot.send_photo(admin_id, fid)
-
         except Exception as e:
             log.warning("Не удалось уведомить администратора %d: %s", admin_id, e)
 
@@ -441,7 +448,7 @@ async def cancel(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
     if update.callback_query:
         await update.callback_query.answer()
-        await update.callback_query.edit_message_text(
+        await update.callback_query.message.reply_text(
             text,
             reply_markup=main_menu(),
         )

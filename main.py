@@ -53,10 +53,6 @@ from handlers.order import (
 logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(name)s — %(message)s",
     level=logging.INFO,
-    handlers=[
-        logging.StreamHandler(),
-        logging.FileHandler("bot.log", encoding="utf-8"),
-    ],
 )
 
 log = logging.getLogger(__name__)
@@ -86,6 +82,7 @@ def main() -> None:
             S_EXTRAS: [
                 CallbackQueryHandler(step_extras_toggle, pattern="^ex_(?!skip|done)"),
                 CallbackQueryHandler(step_extras_done, pattern="^ex_(skip|done)$"),
+                MessageHandler(filters.TEXT & ~filters.COMMAND, step_name),
             ],
             S_NAME: [
                 MessageHandler(filters.TEXT & ~filters.COMMAND, step_name),
@@ -103,7 +100,7 @@ def main() -> None:
             S_CONFIRM: [
                 CallbackQueryHandler(
                     step_confirm,
-                    pattern="^(order_confirm|cancel_order|new_order)$"
+                    pattern="^(order_confirm|cancel_order|new_order)$",
                 ),
             ],
         },
@@ -114,25 +111,29 @@ def main() -> None:
         allow_reentry=True,
     )
 
-    app.add_handler(CommandHandler("start", cmd_start))
-    app.add_handler(CommandHandler("help", cmd_help))
-    app.add_handler(CommandHandler("admin", cmd_admin))
+    # ConversationHandler ПЕРВЫМ
+    app.add_handler(order_conv)
+
+    # Команды
+    app.add_handler(CommandHandler("start",  cmd_start))
+    app.add_handler(CommandHandler("help",   cmd_help))
+    app.add_handler(CommandHandler("admin",  cmd_admin))
     app.add_handler(CommandHandler("cancel", cancel))
 
-    app.add_handler(CallbackQueryHandler(cmd_start, pattern="^main_menu$"))
-    app.add_handler(CallbackQueryHandler(cmd_help, pattern="^show_help$"))
-    app.add_handler(CallbackQueryHandler(my_orders, pattern="^my_orders$"))
+    # Клиентские кнопки
+    app.add_handler(CallbackQueryHandler(cmd_start,  pattern="^main_menu$"))
+    app.add_handler(CallbackQueryHandler(cmd_help,   pattern="^show_help$"))
+    app.add_handler(CallbackQueryHandler(my_orders,  pattern="^my_orders$"))
 
-    app.add_handler(CallbackQueryHandler(adm_menu, pattern="^adm_menu$"))
-    app.add_handler(CallbackQueryHandler(adm_list, pattern="^adm_list_"))
-    app.add_handler(CallbackQueryHandler(adm_order_detail, pattern=r"^adm_order_\d+$"))
-    app.add_handler(CallbackQueryHandler(adm_show_photos, pattern="^adm_photos_"))
+    # Админ кнопки
+    app.add_handler(CallbackQueryHandler(adm_menu,            pattern="^adm_menu$"))
+    app.add_handler(CallbackQueryHandler(adm_list,            pattern="^adm_list_"))
+    app.add_handler(CallbackQueryHandler(adm_order_detail,    pattern=r"^adm_order_\d+$"))
+    app.add_handler(CallbackQueryHandler(adm_show_photos,     pattern="^adm_photos_"))
     app.add_handler(CallbackQueryHandler(adm_set_status_menu, pattern="^adm_setstatus_"))
-    app.add_handler(CallbackQueryHandler(adm_apply_status, pattern="^adm_status_"))
-    app.add_handler(CallbackQueryHandler(adm_filter, pattern="^adm_filter$"))
-    app.add_handler(CallbackQueryHandler(adm_analytics, pattern="^adm_analytics$"))
-
-    app.add_handler(order_conv)
+    app.add_handler(CallbackQueryHandler(adm_apply_status,    pattern="^adm_status_"))
+    app.add_handler(CallbackQueryHandler(adm_filter,          pattern="^adm_filter$"))
+    app.add_handler(CallbackQueryHandler(adm_analytics,       pattern="^adm_analytics$"))
 
     log.info("Бот ООО «Систематеко» запущен. Ожидаю сообщений...")
     app.run_polling(allowed_updates=["message", "callback_query"])

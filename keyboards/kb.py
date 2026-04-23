@@ -23,7 +23,6 @@ def cleaning_type_kb() -> InlineKeyboardMarkup:
     rows = []
     for key, info in CLEANING_TYPES.items():
         rows.append([InlineKeyboardButton(info["label"], callback_data=f"ct_{key}")])
-
     rows.append([InlineKeyboardButton("❌ Отмена", callback_data="cancel_order")])
     return InlineKeyboardMarkup(rows)
 
@@ -45,10 +44,8 @@ def extra_services_kb(selected: list) -> InlineKeyboardMarkup:
 def photo_kb(count: int = 0) -> InlineKeyboardMarkup:
     added = f" ({count} шт.)" if count else ""
     rows = []
-
     if count > 0:
         rows.append([InlineKeyboardButton(f"✔️ Готово{added}", callback_data="photo_done")])
-
     rows.append([InlineKeyboardButton("⏭ Пропустить", callback_data="photo_skip")])
     return InlineKeyboardMarkup(rows)
 
@@ -94,7 +91,6 @@ def orders_list_kb(orders: list, back_data: str = "adm_menu") -> InlineKeyboardM
                 callback_data=f"adm_order_{o['id']}"
             )
         ])
-
     rows.append([InlineKeyboardButton("◀ Назад", callback_data=back_data)])
     return InlineKeyboardMarkup(rows)
 
@@ -112,7 +108,9 @@ def status_choice_kb(order_id: int) -> InlineKeyboardMarkup:
         [InlineKeyboardButton(label, callback_data=f"adm_status_{order_id}_{key}")]
         for key, label in STATUSES.items()
     ]
-    rows.append([InlineKeyboardButton("◀ Отмена", callback_data=f"adm_order_{order_id}")])
+    rows.append([
+        InlineKeyboardButton("◀ Отмена", callback_data=f"adm_order_{order_id}")
+    ])
     return InlineKeyboardMarkup(rows)
 
 
@@ -122,6 +120,5 @@ def filter_kb() -> InlineKeyboardMarkup:
     ]
     for key, label in STATUSES.items():
         rows.append([InlineKeyboardButton(label, callback_data=f"adm_list_{key}")])
-
     rows.append([InlineKeyboardButton("◀ Меню", callback_data="adm_menu")])
     return InlineKeyboardMarkup(rows)

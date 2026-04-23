@@ -195,6 +195,7 @@ async def adm_apply_status(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> No
 
     await q.answer("Обновляю статус...")
 
+    # callback_data = "adm_status_{order_id}_{new_status}"
     raw = q.data.replace("adm_status_", "", 1)
     parts = raw.split("_", 1)
     order_id = int(parts[0])
@@ -276,10 +277,8 @@ async def adm_filter(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
         return
 
     await q.answer()
-
     await q.edit_message_text(
-        "🔍 <b>Фильтр заявок по статусу:</b>\n\n"
-        "Выберите статус:",
+        "🔍 <b>Фильтр заявок по статусу:</b>\n\nВыберите статус:",
         reply_markup=filter_kb(),
         parse_mode="HTML",
     )

@@ -1,17 +1,13 @@
-# =============================================================================
-#  handlers/client.py — Просмотр заявок клиентом
-# =============================================================================
-
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+
 from database.db import get_orders_by_user
 from keyboards.kb import main_menu, my_orders_kb
 from utils.helpers import order_summary
 
 
 async def my_orders(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
-    """Показывает список заявок текущего пользователя."""
-    q    = update.callback_query
+    q = update.callback_query
     user = update.effective_user
     await q.answer()
 
@@ -23,13 +19,12 @@ async def my_orders(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> None:
             "Создайте первую заявку — это быстро!",
             reply_markup=InlineKeyboardMarkup([
                 [InlineKeyboardButton("🧹 Создать заявку", callback_data="new_order")],
-                [InlineKeyboardButton("🏠 Главное меню",   callback_data="main_menu")],
+                [InlineKeyboardButton("🏠 Главное меню", callback_data="main_menu")],
             ]),
             parse_mode="HTML",
         )
         return
 
-    # Показываем последние 10 заявок
     text = f"📋 <b>Ваши заявки ({len(orders)} шт.):</b>\n\n"
     for o in orders[:10]:
         text += order_summary(o, short=True) + "\n" + "─" * 28 + "\n"
