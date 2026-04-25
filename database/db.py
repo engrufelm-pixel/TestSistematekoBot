@@ -7,7 +7,6 @@ log = logging.getLogger(__name__)
 
 
 def connect() -> sqlite3.Connection:
-    """Открывает соединение с БД."""
     conn = sqlite3.connect(DB_FILE, check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
@@ -16,7 +15,6 @@ def connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
-    """Создаёт таблицы при первом запуске."""
     with connect() as db:
         db.executescript("""
         CREATE TABLE IF NOT EXISTS users (
@@ -74,7 +72,6 @@ def init_db() -> None:
 
 
 def save_user(user_id: int, username: str, first_name: str, last_name: str) -> None:
-    """Создаёт пользователя или обновляет его данные."""
     with connect() as db:
         db.execute("""
             INSERT INTO users (user_id, username, first_name, last_name)
@@ -95,9 +92,6 @@ def get_user(user_id: int):
 
 
 def create_order(data: dict) -> int:
-    """
-    Создаёт заявку и возвращает её ID.
-    """
     extras_json = json.dumps(data.get("extra_services", []), ensure_ascii=False)
     photos_json = json.dumps(data.get("photos", []), ensure_ascii=False)
     initial_status = data.get("status", "new")
@@ -107,8 +101,8 @@ def create_order(data: dict) -> int:
             INSERT INTO orders (
                 user_id, room_type, area, cleaning_type, is_one_time,
                 extra_services, contact_name, contact_phone, address,
-                photos, price, priority, status
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                photos, price, priority, status, admin_comment
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             data["user_id"],
             data["room_type"],
@@ -123,6 +117,7 @@ def create_order(data: dict) -> int:
             data.get("price"),
             data.get("priority", "medium"),
             initial_status,
+            data.get("admin_comment"),
         ))
         order_id = cur.lastrowid
 
@@ -164,10 +159,6 @@ def get_all_orders(status: str | None = None) -> list:
 
 
 def update_status(order_id: int, new_status: str, admin_id: int, comment: str = None) -> int | None:
-    """
-    Меняет статус заявки.
-    Возвращает user_id клиента или None, если заявка не найдена.
-    """
     with connect() as db:
         row = db.execute(
             "SELECT status, user_id FROM orders WHERE id = ?",

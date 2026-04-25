@@ -37,6 +37,7 @@ from handlers.order import (
     step_address,
     step_photo_receive,
     step_photo_done,
+    step_date,
     step_confirm,
     cancel,
     S_ROOM_TYPE,
@@ -47,6 +48,7 @@ from handlers.order import (
     S_PHONE,
     S_ADDRESS,
     S_PHOTOS,
+    S_DATE,
     S_CONFIRM,
 )
 
@@ -97,6 +99,9 @@ def main() -> None:
                 MessageHandler(filters.PHOTO, step_photo_receive),
                 CallbackQueryHandler(step_photo_done, pattern="^photo_(skip|done)$"),
             ],
+            S_DATE: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, step_date),
+            ],
             S_CONFIRM: [
                 CallbackQueryHandler(
                     step_confirm,
@@ -111,29 +116,25 @@ def main() -> None:
         allow_reentry=True,
     )
 
-    # ConversationHandler ПЕРВЫМ
     app.add_handler(order_conv)
 
-    # Команды
-    app.add_handler(CommandHandler("start",  cmd_start))
-    app.add_handler(CommandHandler("help",   cmd_help))
-    app.add_handler(CommandHandler("admin",  cmd_admin))
+    app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("help", cmd_help))
+    app.add_handler(CommandHandler("admin", cmd_admin))
     app.add_handler(CommandHandler("cancel", cancel))
 
-    # Клиентские кнопки
-    app.add_handler(CallbackQueryHandler(cmd_start,  pattern="^main_menu$"))
-    app.add_handler(CallbackQueryHandler(cmd_help,   pattern="^show_help$"))
-    app.add_handler(CallbackQueryHandler(my_orders,  pattern="^my_orders$"))
+    app.add_handler(CallbackQueryHandler(cmd_start, pattern="^main_menu$"))
+    app.add_handler(CallbackQueryHandler(cmd_help, pattern="^show_help$"))
+    app.add_handler(CallbackQueryHandler(my_orders, pattern="^my_orders$"))
 
-    # Админ кнопки
-    app.add_handler(CallbackQueryHandler(adm_menu,            pattern="^adm_menu$"))
-    app.add_handler(CallbackQueryHandler(adm_list,            pattern="^adm_list_"))
-    app.add_handler(CallbackQueryHandler(adm_order_detail,    pattern=r"^adm_order_\d+$"))
-    app.add_handler(CallbackQueryHandler(adm_show_photos,     pattern="^adm_photos_"))
+    app.add_handler(CallbackQueryHandler(adm_menu, pattern="^adm_menu$"))
+    app.add_handler(CallbackQueryHandler(adm_list, pattern="^adm_list_"))
+    app.add_handler(CallbackQueryHandler(adm_order_detail, pattern=r"^adm_order_\d+$"))
+    app.add_handler(CallbackQueryHandler(adm_show_photos, pattern="^adm_photos_"))
     app.add_handler(CallbackQueryHandler(adm_set_status_menu, pattern="^adm_setstatus_"))
-    app.add_handler(CallbackQueryHandler(adm_apply_status,    pattern="^adm_status_"))
-    app.add_handler(CallbackQueryHandler(adm_filter,          pattern="^adm_filter$"))
-    app.add_handler(CallbackQueryHandler(adm_analytics,       pattern="^adm_analytics$"))
+    app.add_handler(CallbackQueryHandler(adm_apply_status, pattern="^adm_status_"))
+    app.add_handler(CallbackQueryHandler(adm_filter, pattern="^adm_filter$"))
+    app.add_handler(CallbackQueryHandler(adm_analytics, pattern="^adm_analytics$"))
 
     log.info("Бот ООО «Систематеко» запущен. Ожидаю сообщений...")
     app.run_polling(allowed_updates=["message", "callback_query"])

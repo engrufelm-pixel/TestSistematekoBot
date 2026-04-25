@@ -31,8 +31,9 @@ log = logging.getLogger(__name__)
     S_PHONE,
     S_ADDRESS,
     S_PHOTOS,
+    S_DATE,
     S_CONFIRM,
-) = range(9)
+) = range(10)
 
 
 async def order_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
@@ -42,7 +43,7 @@ async def order_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     ctx.user_data["photos"] = []
 
     await update.callback_query.edit_message_text(
-        "🏠 <b>Шаг 1 из 9 — Тип помещения</b>\n\n"
+        "🏠 <b>Шаг 1 — Тип помещения</b>\n\n"
         "Выберите тип вашего помещения:",
         reply_markup=room_type_kb(),
         parse_mode="HTML",
@@ -60,7 +61,7 @@ async def step_room_type(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
     await q.edit_message_text(
         f"✅ Помещение: <b>{label}</b>\n\n"
-        "📐 <b>Шаг 2 из 9 — Площадь</b>\n\n"
+        "📐 <b>Шаг 2 — Площадь</b>\n\n"
         "Введите площадь помещения в м²\n"
         "<i>Например: 45 или 45.5</i>",
         parse_mode="HTML",
@@ -87,7 +88,7 @@ async def step_area(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
     await update.message.reply_text(
         f"✅ Площадь: <b>{area} м²</b>\n\n"
-        "🧹 <b>Шаг 3 из 9 — Вид уборки</b>\n\n"
+        "🧹 <b>Шаг 3 — Вид уборки</b>\n\n"
         "Выберите вид уборки:",
         reply_markup=cleaning_type_kb(),
         parse_mode="HTML",
@@ -114,7 +115,7 @@ async def step_cleaning_type(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> 
             "Стоимость рассчитывается индивидуально — после получения заявки "
             "наш менеджер свяжется с вами для <b>назначения встречи</b> "
             "и обсуждения всех условий и цены.\n\n"
-            "👤 <b>Шаг 4 из 9 — Контактные данные</b>\n\n"
+            "👤 <b>Шаг 4 — Контактные данные</b>\n\n"
             "Введите ваше имя и фамилию:",
             parse_mode="HTML",
         )
@@ -122,7 +123,7 @@ async def step_cleaning_type(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> 
 
     await q.edit_message_text(
         f"✅ Вид уборки: <b>{label}</b>\n\n"
-        "➕ <b>Шаг 4 из 9 — Дополнительные услуги</b>\n\n"
+        "➕ <b>Шаг 4 — Дополнительные услуги</b>\n\n"
         "Отметьте нужные услуги (можно выбрать несколько).\n"
         "Нажмите <b>«Готово»</b> или <b>«Пропустить»</b>, если не нужны:",
         reply_markup=extra_services_kb([]),
@@ -156,7 +157,7 @@ async def step_extras_done(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> in
         ctx.user_data["extras"] = []
 
     await q.edit_message_text(
-        "👤 <b>Шаг 5 из 9 — Контактные данные</b>\n\n"
+        "👤 <b>Шаг 5 — Контактные данные</b>\n\n"
         "Введите ваше имя и фамилию:",
         parse_mode="HTML",
     )
@@ -176,7 +177,7 @@ async def step_name(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
     await update.message.reply_text(
         f"✅ Имя: <b>{name}</b>\n\n"
-        "📞 <b>Шаг 6 из 9 — Номер телефона</b>\n\n"
+        "📞 <b>Шаг 6 — Номер телефона</b>\n\n"
         "Введите номер телефона для связи:\n"
         "<i>Пример: +79001234567 или 89001234567</i>",
         parse_mode="HTML",
@@ -200,7 +201,7 @@ async def step_phone(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
     await update.message.reply_text(
         f"✅ Телефон: <b>{phone}</b>\n\n"
-        "📍 <b>Шаг 7 из 9 — Адрес</b>\n\n"
+        "📍 <b>Шаг 7 — Адрес</b>\n\n"
         "Введите полный адрес объекта:\n"
         "<i>Пример: г. Сочи, ул. Навагинская, д. 16, кв. 25</i>",
         parse_mode="HTML",
@@ -221,7 +222,7 @@ async def step_address(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
 
     await update.message.reply_text(
         f"✅ Адрес: <b>{address}</b>\n\n"
-        "📸 <b>Шаг 8 из 9 — Фотографии</b>\n\n"
+        "📸 <b>Шаг 8 — Фотографии</b>\n\n"
         "Отправьте фото помещения (необязательно).\n"
         "Можно прикрепить несколько фотографий, затем нажмите <b>«Готово»</b>.\n\n"
         "Если фото не нужны — нажмите <b>«Пропустить»</b>.",
@@ -253,11 +254,36 @@ async def step_photo_done(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int
     if q.data == "photo_skip":
         ctx.user_data["photos"] = []
 
+    if ctx.user_data.get("is_one_time", True):
+        await q.message.reply_text(
+            "📅 <b>Шаг 9 — Дата и время</b>\n\n"
+            "Напишите удобную дату и время для уборки.\n"
+            "<i>Например: завтра в 14:00 или 25 мая, утро</i>",
+            parse_mode="HTML",
+        )
+        return S_DATE
+
     await q.message.reply_text("⏳ Формирую сводку заявки...")
     return await _show_summary(q.message, ctx)
 
 
-async def _show_summary(message, ctx: ContextTypes.DEFAULT_TYPE) -> int:
+async def step_date(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
+    desired_datetime = update.message.text.strip()
+
+    if len(desired_datetime) < 3:
+        await update.message.reply_text(
+            "⚠️ Пожалуйста, укажите дату и время понятным текстом.\n"
+            "<i>Например: завтра в 14:00</i>",
+            parse_mode="HTML",
+        )
+        return S_DATE
+
+    ctx.user_data["desired_datetime"] = desired_datetime
+    await update.message.reply_text("⏳ Формирую сводку заявки...")
+    return await _show_summary(update.message, ctx)
+
+
+async def _show_summary(message_obj, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     d = ctx.user_data
     is_one_time = d.get("is_one_time", True)
     cleaning_type = d["cleaning_type"]
@@ -271,6 +297,7 @@ async def _show_summary(message, ctx: ContextTypes.DEFAULT_TYPE) -> int:
             f"💰 <b>Предварительная стоимость: {fmt_money(price)}</b>\n"
             "<i>(окончательная цена может уточняться)</i>"
         )
+        step_title = "📋 <b>Шаг 10 — Проверьте вашу заявку</b>\n\n"
     else:
         price = None
         price_text = (
@@ -278,6 +305,7 @@ async def _show_summary(message, ctx: ContextTypes.DEFAULT_TYPE) -> int:
             "📅 После отправки заявки менеджер свяжется с вами "
             "для назначения встречи."
         )
+        step_title = "📋 <b>Шаг 9 — Проверьте вашу заявку</b>\n\n"
 
     d["price"] = price
     d["priority"] = get_priority(cleaning_type, area)
@@ -286,7 +314,7 @@ async def _show_summary(message, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     room_label = ROOM_TYPES.get(d["room_type"], d["room_type"])
 
     text = (
-        "📋 <b>Шаг 9 из 9 — Проверьте вашу заявку</b>\n\n"
+        step_title +
         f"🏠 <b>Помещение:</b> {room_label}\n"
         f"📐 <b>Площадь:</b> {area} м²\n"
         f"🧹 <b>Вид уборки:</b> {ct_label}\n"
@@ -301,11 +329,17 @@ async def _show_summary(message, ctx: ContextTypes.DEFAULT_TYPE) -> int:
         f"\n👤 <b>Имя:</b> {d['contact_name']}\n"
         f"📞 <b>Телефон:</b> {d['contact_phone']}\n"
         f"📍 <b>Адрес:</b> {d['address']}\n"
+    )
+
+    if is_one_time:
+        text += f"📅 <b>Желаемая дата и время:</b> {d.get('desired_datetime', 'не указаны')}\n"
+
+    text += (
         f"📸 <b>Фото:</b> {'есть (' + str(len(photos)) + ' шт.)' if photos else 'нет'}\n\n"
         f"{price_text}"
     )
 
-    await message.reply_text(
+    await message_obj.reply_text(
         text,
         reply_markup=confirm_kb(),
         parse_mode="HTML",
@@ -335,7 +369,7 @@ async def step_confirm(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
         ctx.user_data["extras"] = []
         ctx.user_data["photos"] = []
         await q.message.reply_text(
-            "🏠 <b>Шаг 1 из 9 — Тип помещения</b>\n\n"
+            "🏠 <b>Шаг 1 — Тип помещения</b>\n\n"
             "Выберите тип вашего помещения:",
             reply_markup=room_type_kb(),
             parse_mode="HTML",
@@ -346,21 +380,26 @@ async def step_confirm(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
     is_one_time = d.get("is_one_time", True)
     initial_status = "new" if is_one_time else "reviewing"
 
+    admin_comment = None
+    if is_one_time and d.get("desired_datetime"):
+        admin_comment = f"Желаемая дата и время: {d['desired_datetime']}"
+
     try:
         order_id = create_order({
-            "user_id":        q.from_user.id,
-            "room_type":      d["room_type"],
-            "area":           d["area"],
-            "cleaning_type":  d["cleaning_type"],
-            "is_one_time":    is_one_time,
+            "user_id": q.from_user.id,
+            "room_type": d["room_type"],
+            "area": d["area"],
+            "cleaning_type": d["cleaning_type"],
+            "is_one_time": is_one_time,
             "extra_services": d.get("extras", []),
-            "contact_name":   d["contact_name"],
-            "contact_phone":  d["contact_phone"],
-            "address":        d["address"],
-            "photos":         d.get("photos", []),
-            "price":          d.get("price"),
-            "priority":       d.get("priority", "medium"),
-            "status":         initial_status,
+            "contact_name": d["contact_name"],
+            "contact_phone": d["contact_phone"],
+            "address": d["address"],
+            "photos": d.get("photos", []),
+            "price": d.get("price"),
+            "priority": d.get("priority", "medium"),
+            "status": initial_status,
+            "admin_comment": admin_comment,
         })
         log.info("=== Заявка создана: #%d ===", order_id)
     except Exception as e:
@@ -377,6 +416,7 @@ async def step_confirm(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> int:
             f"✅ <b>Заявка #{order_id} принята!</b>\n\n"
             f"🧹 {CLEANING_TYPES.get(d['cleaning_type'], {}).get('label', '')}\n"
             f"📍 {d['address']}\n"
+            f"📅 Желаемая дата и время: <b>{d.get('desired_datetime', 'не указаны')}</b>\n"
             f"💰 Стоимость: <b>{fmt_money(d.get('price'))}</b>\n\n"
             "Наш менеджер свяжется с вами для подтверждения даты и времени.\n\n"
             "📋 Статус заявки можно отслеживать в разделе <b>«Мои заявки»</b>."
@@ -421,6 +461,12 @@ async def _notify_admins(ctx, order_id: int, d: dict, user) -> None:
         f"🏠 {room_label} • {d['area']} м²\n"
         f"🧹 {ct_label}\n"
         f"📍 {d['address']}\n"
+    )
+
+    if is_one_time and d.get("desired_datetime"):
+        text += f"📅 {d['desired_datetime']}\n"
+
+    text += (
         f"💰 {price_str}\n"
         f"🎯 Приоритет: {priority_label}\n"
         f"📸 Фото: {'есть (' + str(len(d.get('photos', []))) + ' шт.)' if d.get('photos') else 'нет'}"
@@ -434,10 +480,12 @@ async def _notify_admins(ctx, order_id: int, d: dict, user) -> None:
                 reply_markup=order_actions_kb(order_id),
                 parse_mode="HTML",
             )
+
             if d.get("photos"):
                 await ctx.bot.send_message(admin_id, f"📸 Фото к заявке #{order_id}:")
                 for fid in d["photos"]:
                     await ctx.bot.send_photo(admin_id, fid)
+
         except Exception as e:
             log.warning("Не удалось уведомить администратора %d: %s", admin_id, e)
 
